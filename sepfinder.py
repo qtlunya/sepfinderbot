@@ -144,34 +144,7 @@ def on_text(update, ctx):
         p = urllib.parse.urlparse(firmware['url'])
 
         if p.netloc == 'appldnld.apple.com':
-            # Partialzip required
-
-            update.message.reply_text('Extracting BuildManifest, please wait...')
-
-            with tempfile.TemporaryDirectory() as d:
-                oldcwd = Path.cwd()
-                os.chdir(d)
-
-                p = subprocess.Popen(['pzb', firmware['url'], '-g', 'BuildManifest.plist'])
-
-                while p.poll() is None:
-                    ctx.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
-                    time.sleep(1)
-
-                f = Path(d) / 'BuildManifest.plist'
-
-                if not f.exists():
-                    return update.message.reply_text(
-                        'Unable to extract BuildManifest for the selected firmware, please try again later.'
-                    )
-
-                try:
-                    buildmanifest = plistlib.loads(f.read_bytes())
-                except Exception:
-                    update.message.reply_text('Unable to parse BuildManifest, please try again later.')
-                    raise
-
-                os.chdir(oldcwd)
+            buildmanifest = pzb_buildmanifest(update, ctx, firmware)
         else:
             buildmanifest_url = urllib.parse.urlunparse(
                 p._replace(path='/'.join([*p.path.split('/')[:-1], 'BuildManifest.plist']))
@@ -179,16 +152,14 @@ def on_text(update, ctx):
 
             r = session.get(buildmanifest_url)
 
-            if not r.ok:
-                return update.message.reply_text(
-                    'Unable to retrieve BuildManifest for the selected firmware, please try again later.'
-                )
-
-            try:
-                buildmanifest = plistlib.loads(r.content)
-            except Exception:
-                update.message.reply_text('Unable to parse BuildManifest, please try again later.')
-                raise
+            if r.ok:
+                try:
+                    buildmanifest = plistlib.loads(r.content)
+                except Exception:
+                    update.message.reply_text('Unable to parse BuildManifest, please try again later.')
+                    raise
+            else:
+                buildmanifest = pzb_buildmanifest(update, ctx, firmware)
 
         try:
             buildidentity = next(
@@ -249,6 +220,37 @@ def show_firmware_menu(update, ctx):
     update.message.reply_text('Please select a version.', reply_markup=ReplyKeyboardMarkup(keyboard))
 
     ctx.user_data['state'] = State.FIRMWARE
+
+
+def pzb_buildmanifest(update, ctx, firmware):
+    update.message.reply_text('Extracting BuildManifest, please wait...')
+
+    with tempfile.TemporaryDirectory() as d:
+        oldcwd = Path.cwd()
+        os.chdir(d)
+
+        p = subprocess.Popen(['pzb', firmware['url'], '-g', 'BuildManifest.plist'])
+
+        while p.poll() is None:
+            ctx.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+            time.sleep(1)
+
+        f = Path(d) / 'BuildManifest.plist'
+
+        if not f.exists():
+            return update.message.reply_text(
+                'Unable to extract BuildManifest for the selected firmware, please try again later.'
+            )
+
+        try:
+            buildmanifest = plistlib.loads(f.read_bytes())
+        except Exception:
+            update.message.reply_text('Unable to parse BuildManifest, please try again later.')
+            raise
+
+        os.chdir(oldcwd)
+
+        return buildmanifest
 
 
 if __name__ == '__main__':
