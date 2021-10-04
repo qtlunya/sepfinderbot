@@ -41,6 +41,7 @@ def start(update, ctx):
         ],
     ]))
 
+    ctx.user_data.clear()
     ctx.user_data['state'] = State.DEVICE_TYPE
 
 
