@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "sepfinder"
+version = "0.1.0"
+description = "SEP Finder Bot"
+authors = ["nyuszika7h <nyuszika7h@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+python-telegram-bot = "^13.7"
+requests = "^2.26.0"
+toml = "^0.10.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
