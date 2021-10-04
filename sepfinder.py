@@ -55,7 +55,12 @@ def on_text(update, ctx):
         except KeyError:
             return update.message.reply_text('Invalid input.')
 
-        ctx.bot_data['devices'] = session.get('https://api.ipsw.me/v4/devices').json()
+        r = session.get('https://api.ipsw.me/v4/devices')
+
+        if not r.ok:
+            return update.message.reply_text('Unable to communicate with ipsw.me API, please try again later.')
+
+        ctx.bot_data['devices'] = r.json()
 
         devices = [x for x in ctx.bot_data['devices'] if x['identifier'].startswith(device_type)]
 
@@ -79,9 +84,18 @@ def on_text(update, ctx):
         except StopIteration:
             return update.message.reply_text('Invalid input.')
 
-        device = session.get(f'https://api.ipsw.me/v4/device/{device["identifier"]}').json()
+        r = session.get(f'https://api.ipsw.me/v4/device/{device["identifier"]}')
+
+        if not r.ok:
+            return update.message.reply_text('Unable to communicate with ipsw.me API, please try again later.')
+
+        device = r.json()
+
         # Filter out DEV boards
         boards = [x['boardconfig'] for x in device['boards'] if x['boardconfig'].lower().endswith('ap')]
+
+        if not boards:
+            return update.message.reply_text('No boardconfigs found for this device.')
 
         ctx.user_data['device'] = device
 
@@ -135,15 +149,31 @@ def on_text(update, ctx):
 
             r = session.get(buildmanifest_url)
 
-            buildmanifest = plistlib.loads(r.content)
+            if not r.ok:
+                return update.message.reply_text(
+                    'Unable to retrieve BuildManifest for the selected firmware, please try again later.'
+                )
 
-            buildidentity = next(
-                x for x in buildmanifest['BuildIdentities']
-                if x['Info']['DeviceClass'].lower() == ctx.user_data['boardconfig'].lower()
-            )
+            try:
+                buildmanifest = plistlib.loads(r.content)
 
-            sep_path = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
-            bb_path = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
+                buildidentity = next(
+                    x for x in buildmanifest['BuildIdentities']
+                    if x['Info']['DeviceClass'].lower() == ctx.user_data['boardconfig'].lower()
+                )
+
+                if 'RestoreSEP' in buildidentity['Manifest']:
+                    sep_path = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
+                else:
+                    sep_path = 'None'
+
+                if 'BasebandFirmware' in buildidentity['Manifest']:
+                    bb_path = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
+                else:
+                    bb_path = 'None'
+            except Exception:
+                update.message.reply_text('Unable to parse BuildManifest, please try again later.')
+                raise
 
             update.message.reply_text(
                 f'<b>SEP</b>: {html.escape(sep_path)}\n'
@@ -164,6 +194,9 @@ def show_firmware_menu(update, ctx):
         )
 
     firmwares = [x for x in ctx.user_data['device']['firmwares'] if x['signed']]
+
+    if not firmwares:
+        return update.message.reply_text('No signed firmwares found for this device.')
 
     keyboard = []
     for i, firmware in enumerate(firmwares):
