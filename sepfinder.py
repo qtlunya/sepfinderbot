@@ -176,8 +176,16 @@ def on_text(update, ctx):
                 raise
 
             update.message.reply_text(
-                f'<b>SEP</b>: {html.escape(sep_path)}\n'
-                f'<b>Baseband</b>: {html.escape(bb_path)}',
+                ('<b>{device} ({boardconfig}) - {firmware} ({buildid})</b>\n\n'
+                 '<b>SEP</b>: {sep_path}\n'
+                 '<b>Baseband</b>: {bb_path}').format(
+                    device=html.escape(ctx.user_data['device']['name']),
+                    boardconfig=html.escape(ctx.user_data['boardconfig']),
+                    firmware=html.escape(firmware['version']),
+                    buildid=html.escape(firmware['buildid']),
+                    sep_path=html.escape(sep_path),
+                    bb_path=html.escape(bb_path),
+                ),
                 parse_mode='html',
                 reply_markup=ReplyKeyboardRemove()
             )
