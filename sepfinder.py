@@ -3,13 +3,18 @@
 import argparse
 import html
 import logging
+import os
 import plistlib
+import subprocess
+import tempfile
+import time
 import urllib.parse
 from enum import Enum
+from pathlib import Path
 
 import requests
 import toml
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import ChatAction, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
 
@@ -140,9 +145,33 @@ def on_text(update, ctx):
 
         if p.netloc == 'appldnld.apple.com':
             # Partialzip required
-            return update.message.reply_text(
-                'Sorry, firmwares older than 11.3.1 are not currently supported.', reply_markup=ReplyKeyboardRemove()
-            )
+
+            update.message.reply_text('Extracting BuildManifest, please wait...')
+
+            with tempfile.TemporaryDirectory() as d:
+                oldcwd = Path.cwd()
+                os.chdir(d)
+
+                p = subprocess.Popen(['pzb', firmware['url'], '-g', 'BuildManifest.plist'])
+
+                while p.poll() is None:
+                    ctx.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+                    time.sleep(1)
+
+                f = Path(d) / 'BuildManifest.plist'
+
+                if not f.exists():
+                    return update.message.reply_text(
+                        'Unable to extract BuildManifest for the selected firmware, please try again later.'
+                    )
+
+                try:
+                    buildmanifest = plistlib.loads(f.read_bytes())
+                except Exception:
+                    update.message.reply_text('Unable to parse BuildManifest, please try again later.')
+                    raise
+
+                os.chdir(oldcwd)
         else:
             buildmanifest_url = urllib.parse.urlunparse(
                 p._replace(path='/'.join([*p.path.split('/')[:-1], 'BuildManifest.plist']))
@@ -157,39 +186,43 @@ def on_text(update, ctx):
 
             try:
                 buildmanifest = plistlib.loads(r.content)
-
-                buildidentity = next(
-                    x for x in buildmanifest['BuildIdentities']
-                    if x['Info']['DeviceClass'].lower() == ctx.user_data['boardconfig'].lower()
-                )
-
-                if 'RestoreSEP' in buildidentity['Manifest']:
-                    sep_path = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
-                else:
-                    sep_path = 'None'
-
-                if 'BasebandFirmware' in buildidentity['Manifest']:
-                    bb_path = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
-                else:
-                    bb_path = 'None'
             except Exception:
                 update.message.reply_text('Unable to parse BuildManifest, please try again later.')
                 raise
 
-            update.message.reply_text(
-                ('<b>{device} ({boardconfig}) - {firmware} ({buildid})</b>\n\n'
-                 '<b>SEP</b>: {sep_path}\n'
-                 '<b>Baseband</b>: {bb_path}').format(
-                    device=html.escape(ctx.user_data['device']['name']),
-                    boardconfig=html.escape(ctx.user_data['boardconfig']),
-                    firmware=html.escape(firmware['version']),
-                    buildid=html.escape(firmware['buildid']),
-                    sep_path=html.escape(sep_path),
-                    bb_path=html.escape(bb_path),
-                ),
-                parse_mode='html',
-                reply_markup=ReplyKeyboardRemove()
+        try:
+            buildidentity = next(
+                x for x in buildmanifest['BuildIdentities']
+                if x['Info']['DeviceClass'].lower() == ctx.user_data['boardconfig'].lower()
             )
+
+            if 'RestoreSEP' in buildidentity['Manifest']:
+                sep_path = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
+            else:
+                sep_path = 'None'
+
+            if 'BasebandFirmware' in buildidentity['Manifest']:
+                bb_path = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
+            else:
+                bb_path = 'None'
+        except Exception:
+            update.message.reply_text('Unable to get data from BuildManifest, please try again later.')
+            raise
+
+        update.message.reply_text(
+            ('<b>{device} ({boardconfig}) - {firmware} ({buildid})</b>\n\n'
+             '<b>SEP</b>: {sep_path}\n'
+             '<b>Baseband</b>: {bb_path}').format(
+                device=html.escape(ctx.user_data['device']['name']),
+                boardconfig=html.escape(ctx.user_data['boardconfig']),
+                firmware=html.escape(firmware['version']),
+                buildid=html.escape(firmware['buildid']),
+                sep_path=html.escape(sep_path),
+                bb_path=html.escape(bb_path),
+            ),
+            parse_mode='html',
+            reply_markup=ReplyKeyboardRemove()
+        )
 
         ctx.user_data.clear()
     else:
