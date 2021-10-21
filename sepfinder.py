@@ -34,7 +34,7 @@ class State(Enum):
     FIRMWARE = 4
 
 
-def start(update, ctx):
+def sepbb(update, ctx):
     update.message.reply_text('Please select a device type.', reply_markup=ReplyKeyboardMarkup([
         [
             'iPhone',
@@ -270,7 +270,9 @@ if __name__ == '__main__':
 
     session = requests.Session()
 
-    dispatcher.add_handler(CommandHandler('start', start))
+    dispatcher.add_handler(CommandHandler('start', sepbb))
+    dispatcher.add_handler(CommandHandler('sep', sepbb))
+    dispatcher.add_handler(CommandHandler('sepbb', sepbb))
     dispatcher.add_handler(MessageHandler(Filters.text, on_text))
 
     updater.start_polling()
