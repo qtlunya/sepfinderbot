@@ -9,13 +9,15 @@ import subprocess
 import tempfile
 import time
 import urllib.parse
+import zipfile
 from enum import Enum
+from io import BytesIO
 from pathlib import Path
 
 import requests
 import toml
-from telegram import ChatAction, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
+from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 
 
 DEVICE_TYPES = {
@@ -137,14 +139,16 @@ def on_text(update, ctx):
             )
 
         try:
-            firmware = next(x for x in ctx.user_data['device']['firmwares'] if x['version'] == text)
+            firmware = ctx.user_data['firmware'] = next(
+                x for x in ctx.user_data['device']['firmwares'] if x['version'] == text
+            )
         except StopIteration:
             return update.message.reply_text('Invalid input.')
 
         p = urllib.parse.urlparse(firmware['url'])
 
         if p.netloc == 'appldnld.apple.com':
-            buildmanifest = pzb_buildmanifest(update, ctx, firmware)
+            ctx.user_data['buildmanifest'] = pzb(update, ctx, firmware, 'BuildManifest.plist', 'BuildManifest')
         else:
             buildmanifest_url = urllib.parse.urlunparse(
                 p._replace(path='/'.join([*p.path.split('/')[:-1], 'BuildManifest.plist']))
@@ -153,13 +157,17 @@ def on_text(update, ctx):
             r = session.get(buildmanifest_url)
 
             if r.ok:
-                try:
-                    buildmanifest = plistlib.loads(r.content)
-                except Exception:
-                    update.message.reply_text('Unable to parse BuildManifest, please try again later.')
-                    raise
+                ctx.user_data['buildmanifest'] = r.content
             else:
-                buildmanifest = pzb_buildmanifest(update, ctx, firmware)
+                ctx.user_data['buildmanifest'] = pzb(
+                    update, ctx, ctx.user_data['firmware'], 'BuildManifest.plist', 'BuildManifest'
+                )
+
+        try:
+            buildmanifest = plistlib.loads(ctx.user_data['buildmanifest'])
+        except Exception:
+            update.message.reply_text('Unable to parse BuildManifest, please try again later.')
+            raise
 
         try:
             buildidentity = next(
@@ -168,17 +176,25 @@ def on_text(update, ctx):
             )
 
             if 'RestoreSEP' in buildidentity['Manifest']:
-                sep_path = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
+                sep_path = ctx.user_data['sep_path'] = buildidentity['Manifest']['RestoreSEP']['Info']['Path']
             else:
-                sep_path = 'None'
+                sep_path = ctx.user_data['sep_path'] = None
 
             if 'BasebandFirmware' in buildidentity['Manifest']:
-                bb_path = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
+                bb_path = ctx.user_data['bb_path'] = buildidentity['Manifest']['BasebandFirmware']['Info']['Path']
             else:
-                bb_path = 'None'
+                bb_path = ctx.user_data['bb_path'] = None
         except Exception:
             update.message.reply_text('Unable to get data from BuildManifest, please try again later.')
             raise
+
+        try:
+            update.message.reply_text(
+                'Removing keyboard... (ignore this message)',
+                reply_markup=ReplyKeyboardRemove(),
+            ).delete()
+        except Exception:
+            pass
 
         update.message.reply_text(
             ('<b>{device} ({boardconfig}) - {firmware} ({buildid})</b>\n\n'
@@ -188,16 +204,43 @@ def on_text(update, ctx):
                 boardconfig=html.escape(ctx.user_data['boardconfig']),
                 firmware=html.escape(firmware['version']),
                 buildid=html.escape(firmware['buildid']),
-                sep_path=html.escape(sep_path),
-                bb_path=html.escape(bb_path),
+                sep_path=html.escape(str(sep_path)),
+                bb_path=html.escape(str(bb_path)),
             ),
             parse_mode='html',
-            reply_markup=ReplyKeyboardRemove()
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("Download", callback_data="download"),
+                ],
+            ]),
         )
-
-        ctx.user_data.clear()
     else:
         update.message.reply_text('Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove())
+
+
+def on_callback_query(update, ctx):
+    if update.callback_query.data == 'download':
+        zf = BytesIO()
+        zf.name = f'sepbb_{ctx.user_data["boardconfig"]}_{ctx.user_data["firmware"]["buildid"]}.zip'
+
+        with zipfile.ZipFile(zf, 'w') as zfd:
+            buildmanifest = ctx.user_data['buildmanifest']
+            zfd.writestr('BuildManifest.plist', buildmanifest)
+
+            if ctx.user_data['sep_path']:
+                sep = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['sep_path'], 'SEP')
+                if sep:
+                    zfd.writestr(ctx.user_data['sep_path'], sep)
+
+            if ctx.user_data['bb_path']:
+                baseband = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['bb_path'], 'Baseband')
+                if baseband:
+                    zfd.writestr(ctx.user_data['bb_path'], baseband)
+
+        zf.seek(0)
+        update.message.reply_document(zf.read(), zf.name)
+
+        ctx.bot.answer_callback_query(update.callback_query.id)
 
 
 def show_firmware_menu(update, ctx):
@@ -222,35 +265,32 @@ def show_firmware_menu(update, ctx):
     ctx.user_data['state'] = State.FIRMWARE
 
 
-def pzb_buildmanifest(update, ctx, firmware):
-    update.message.reply_text('Extracting BuildManifest, please wait...')
+def pzb(update, ctx, firmware, file, name):
+    update.message = update.message or update.callback_query.message
+
+    update.message.reply_text(f'Extracting {name}, please wait...')
 
     with tempfile.TemporaryDirectory() as d:
         oldcwd = Path.cwd()
         os.chdir(d)
 
-        p = subprocess.Popen(['pzb', firmware['url'], '-g', 'BuildManifest.plist'])
+        p = subprocess.Popen(['pzb', firmware['url'], '-g', file])
 
         while p.poll() is None:
             ctx.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
             time.sleep(1)
 
-        f = Path(d) / 'BuildManifest.plist'
-
-        if not f.exists():
-            return update.message.reply_text(
-                'Unable to extract BuildManifest for the selected firmware, please try again later.'
-            )
-
-        try:
-            buildmanifest = plistlib.loads(f.read_bytes())
-        except Exception:
-            update.message.reply_text('Unable to parse BuildManifest, please try again later.')
-            raise
-
         os.chdir(oldcwd)
 
-        return buildmanifest
+        f = Path(d) / Path(file).name
+
+        if not f.exists():
+            update.message.reply_text(
+                f'Unable to extract {name} for the selected firmware, please try again later.'
+            )
+            return
+
+        return f.read_bytes()
 
 
 if __name__ == '__main__':
@@ -274,5 +314,6 @@ if __name__ == '__main__':
     dispatcher.add_handler(CommandHandler('sep', sepbb))
     dispatcher.add_handler(CommandHandler('sepbb', sepbb))
     dispatcher.add_handler(MessageHandler(Filters.text, on_text))
+    dispatcher.add_handler(CallbackQueryHandler(on_callback_query))
 
     updater.start_polling()
