@@ -260,7 +260,10 @@ def show_firmware_menu(update, ctx):
             keyboard.append([])
         keyboard[-1].append(firmware['version'])
 
-    update.message.reply_text('Please select a version.', reply_markup=ReplyKeyboardMarkup(keyboard))
+    update.message.reply_text(
+        'Please select a version.\n(Only currently signed versions are shown.)',
+        reply_markup=ReplyKeyboardMarkup(keyboard),
+    )
 
     ctx.user_data['state'] = State.FIRMWARE
 
