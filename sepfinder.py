@@ -105,14 +105,14 @@ def on_text(update, ctx):
                 'firmwares': [],
             }
             update.message.reply_text('Unable to communicate with ipsw.me API.')
-            ctx.bot_data['ipswme_failed'] = True
+            ctx.user_data['ipswme_failed'] = True
 
         if rb.ok:
             device_beta = rb.json()
             device['firmwares'] += device_beta
         else:
             update.message.reply_text('Unable to communicate with the beta API.')
-            if ctx.bot_data['ipswme_failed']:
+            if ctx.user_data['ipswme_failed']:
                 return update.message.reply_text('Please try again later.', reply_markup=ReplyKeyboardRemove())
 
         # Filter out DEV boards
@@ -265,7 +265,7 @@ def show_firmware_menu(update, ctx):
             'Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove(),
         )
 
-    firmwares = [x for x in ctx.user_data['device']['firmwares'] if 'signed' in x and x['signed']]
+    firmwares = [x for x in ctx.user_data['device']['firmwares'] if x.get('signed')]
 
     if not firmwares:
         return update.message.reply_text('No signed firmwares found for this device.')
