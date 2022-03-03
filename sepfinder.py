@@ -97,7 +97,7 @@ def on_text(update, ctx):
         rb = session.get(f'https://api.m1sta.xyz/betas/{device["identifier"]}')
         if r.ok:
             device = r.json()
-            ctx.bot_data['ipswme_failed'] = False
+            ctx.user_data['ipswme_failed'] = False
         else:
             device = {
                 'name': device['name'],
