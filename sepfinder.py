@@ -93,11 +93,16 @@ def on_text(update, ctx):
             return update.message.reply_text('Invalid input.')
 
         r = session.get(f'https://api.ipsw.me/v4/device/{device["identifier"]}')
-
         if not r.ok:
             return update.message.reply_text('Unable to communicate with ipsw.me API, please try again later.')
-
         device = r.json()
+
+        rb = session.get(f'https://api.m1sta.xyz/betas/{device["identifier"]}')
+        if rb.ok:
+            device_beta = rb.json()
+            device['firmwares'] += device_beta
+        else:
+            update.message.reply_text('Unable to communicate with the beta API, only release versions will be shown.')
 
         # Filter out DEV boards
         boards = [x['boardconfig'] for x in device['boards'] if x['boardconfig'].lower().endswith('ap')]
@@ -249,7 +254,7 @@ def show_firmware_menu(update, ctx):
             'Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove(),
         )
 
-    firmwares = [x for x in ctx.user_data['device']['firmwares'] if x['signed']]
+    firmwares = [x for x in ctx.user_data['device']['firmwares'] if 'signed' in x and x['signed']]
 
     if not firmwares:
         return update.message.reply_text('No signed firmwares found for this device.')
