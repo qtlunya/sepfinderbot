@@ -113,7 +113,7 @@ def on_text(update, ctx):
         else:
             update.message.reply_text('Unable to communicate with the beta API.')
             if ctx.bot_data['ipswme_failed']:
-                return update.message.reply_text("Please try again later.")
+                return update.message.reply_text('Please try again later.', reply_markup=ReplyKeyboardRemove())
 
         # Filter out DEV boards
         boards = [x['boardconfig'] for x in device['boards'] if x['boardconfig'].lower().endswith('ap')]
