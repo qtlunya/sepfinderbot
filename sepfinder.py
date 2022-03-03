@@ -16,6 +16,7 @@ from pathlib import Path
 
 import requests
 import toml
+from packaging import version
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 
@@ -269,6 +270,13 @@ def show_firmware_menu(update, ctx):
 
     if not firmwares:
         return update.message.reply_text('No signed firmwares found for this device.')
+
+    firmwares = sorted(
+        firmwares,
+        key=lambda x: version.parse(
+            x['version'].replace(' ', '') + ('1' if x['version'].lower().endswith(('beta', 'rc')) else '')
+        ),
+    )
 
     keyboard = []
     for i, firmware in enumerate(firmwares):
