@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     config = toml.load('config.toml')
 
-    updater = Updater(config['token'])
+    updater = Updater(config['token'], base_url=config.get('base_url'))
     dispatcher = updater.dispatcher
 
     session = requests.Session()

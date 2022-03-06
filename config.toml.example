@@ -1,2 +1,4 @@
 # Telegram bot token
 token = ''
+# Optional local bot API server base URL
+#base_url = ''
