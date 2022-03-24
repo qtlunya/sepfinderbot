@@ -252,7 +252,7 @@ def on_callback_query(update, ctx):
                     zfd.writestr(ctx.user_data['sep_path'], sep)
 
             if ctx.user_data['bb_path']:
-                baseband = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['bb_path'], 'Baseband')
+                baseband = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['bb_path'], 'baseband')
                 if baseband:
                     zfd.writestr(ctx.user_data['bb_path'], baseband)
 

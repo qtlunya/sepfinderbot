@@ -1,6 +1,6 @@
 # SEP Finder Bot
 
-This is a Telegram bot that will help you find the correct SEP and Baseband files to use for your device with futurerestore.
+This is a Telegram bot that will help you find the correct SEP and baseband files to use for your device with futurerestore.
 
 ## Usage
 
