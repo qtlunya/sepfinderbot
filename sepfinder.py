@@ -110,7 +110,9 @@ def on_text(update, ctx):
 
         if rb.ok:
             device_beta = rb.json()
-            device['firmwares'] += device_beta
+            device['firmwares'] += [
+                d for d in device_beta if not any(x['buildid'] == d['buildid'] for x in device['firmwares'])
+            ]
         else:
             update.message.reply_text('Unable to communicate with the beta API.')
             if ctx.user_data['ipswme_failed']:
