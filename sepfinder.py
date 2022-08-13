@@ -17,6 +17,7 @@ from pathlib import Path
 import requests
 import toml
 from packaging import version
+from remotezip import RemoteZip
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 
@@ -300,26 +301,17 @@ def pzb(update, ctx, firmware, file, name):
     update.message.reply_text(f'Extracting {name}, please wait...')
 
     with tempfile.TemporaryDirectory() as d:
-        oldcwd = Path.cwd()
-        os.chdir(d)
-
-        p = subprocess.Popen(['pzb', firmware['url'], '-g', file])
-
-        while p.poll() is None:
-            ctx.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
-            time.sleep(1)
-
-        os.chdir(oldcwd)
-
-        f = Path(d) / Path(file).name
-
-        if not f.exists():
+        try:
+            with RemoteZip(firmware['url']) as rzip:
+                rzip.extract(file, d)
+        except Exception as e:
             update.message.reply_text(
                 f'Unable to extract {name} for the selected firmware, please try again later.'
             )
+            log.exception(e)
             return
 
-        return f.read_bytes()
+        return (Path(d) / file).read_bytes()
 
 
 if __name__ == '__main__':
