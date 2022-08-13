@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.7"
 python-telegram-bot = "^13.7"
 packaging = "^21.3"
 remotezip = "^0.9.4"

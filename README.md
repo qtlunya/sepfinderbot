@@ -8,4 +8,4 @@ A hosted instance is available at <https://t.me/sepfinderbot>. Press the "Start"
 
 ## Setup
 
-If you wish to run your own instance, copy `config.toml.example` to `config.toml` and enter a bot token you obtained from BotFather. Then run `poetry install` to install the dependencies, and `poetry run ./sepfinder.py` to run it. (Python 3.6 or newer is required.)
+If you wish to run your own instance, copy `config.toml.example` to `config.toml` and enter a bot token you obtained from BotFather. Then run `poetry install` to install the dependencies, and `poetry run ./sepfinder.py` to run it. (Python 3.7 or newer is required.)
