@@ -3,11 +3,8 @@
 import argparse
 import html
 import logging
-import os
 import plistlib
-import subprocess
 import tempfile
-import time
 import urllib.parse
 import zipfile
 from enum import Enum
@@ -18,7 +15,7 @@ import requests
 import toml
 from packaging import version
 from remotezip import RemoteZip
-from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 
 
