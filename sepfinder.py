@@ -277,7 +277,8 @@ def show_firmware_menu(update, ctx):
     firmwares = sorted(
         firmwares,
         key=lambda x: version.parse(
-            x['version'].replace(' ', '') + ('1' if x['version'].lower().endswith(('beta', 'rc')) else '')
+            x['version'].replace(' ', '').replace('Update', '+')
+            + ('1' if x['version'].lower().endswith(('beta', 'rc', 'update')) else '')
         ),
     )
 
