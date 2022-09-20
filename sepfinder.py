@@ -271,6 +271,9 @@ def show_firmware_menu(update, ctx):
     if not firmwares:
         return update.message.reply_text('No signed firmwares found for this device.')
 
+    for firmware in firmwares:
+        firmware['version'] = firmware['version'].replace('[', '').replace(']', '')
+
     firmwares = sorted(
         firmwares,
         key=lambda x: version.parse(
