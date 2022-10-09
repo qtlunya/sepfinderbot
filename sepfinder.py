@@ -152,7 +152,8 @@ def on_text(update, ctx):
     elif ctx.user_data['state'] == State.FIRMWARE:
         if 'device' not in ctx.user_data or 'boardconfig' not in ctx.user_data:
             return update.message.reply_text(
-                'Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove()
+                'Invalid state. The bot was probably restarted. Please start over using /start.',
+                reply_markup=ReplyKeyboardRemove(),
             )
 
         try:
@@ -244,7 +245,10 @@ def on_text(update, ctx):
             ]),
         )
     else:
-        update.message.reply_text('Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove())
+        update.message.reply_text(
+            'Invalid state. The bot was probably restarted. Please start over using /start.',
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
 
 def on_callback_query(update, ctx):
@@ -275,7 +279,8 @@ def on_callback_query(update, ctx):
 def show_firmware_menu(update, ctx):
     if 'device' not in ctx.user_data:
         return update.message.reply_text(
-            'Invalid state. Please start over using /start.', reply_markup=ReplyKeyboardRemove(),
+            'Invalid state. The bot was probably restarted. Please start over using /start.',
+            reply_markup=ReplyKeyboardRemove(),
         )
 
     firmwares = [x for x in ctx.user_data['device']['firmwares'] if x.get('signed')]
