@@ -213,16 +213,28 @@ def on_text(update, ctx):
         except Exception:
             pass
 
+        custom_latest_msg = '⚠️ <b>Note</b>: It is recommended to use <code>--custom-latest'
+        if 'beta' in firmware['version'].lower() or 'rc' in firmware['version'].lower():
+            custom_latest_msg += f'-beta --custom-latest-buildid {firmware["buildid"]}'
+        else:
+            custom_latest_msg += f' {firmware["version"]}'
+        custom_latest_msg += (
+            '</code> instead of manually specifying SEP/BB. Manually specifying may lead to bootloops due to '
+            'incompatibility of other firmware components such as Rose, especially on A13+.'
+        )
+
         update.message.reply_text(
             ('<b>{device} ({boardconfig}) - {firmware} ({buildid})</b>\n\n'
              '<b>SEP</b>: {sep_path}\n'
-             '<b>Baseband</b>: {bb_path}').format(
+             '<b>Baseband</b>: {bb_path}\n\n'
+             '{custom_latest_msg}').format(
                 device=html.escape(ctx.user_data['device']['name']),
                 boardconfig=html.escape(ctx.user_data['boardconfig']),
                 firmware=html.escape(firmware['version']),
                 buildid=html.escape(firmware['buildid']),
                 sep_path=html.escape(str(sep_path)),
                 bb_path=html.escape(str(bb_path)),
+                custom_latest_msg=custom_latest_msg,
             ),
             parse_mode='html',
             reply_markup=InlineKeyboardMarkup([
