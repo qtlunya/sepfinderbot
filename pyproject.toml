@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "sepfinder"
+name = "sepfinderbot"
 version = "0.1.0"
 description = "SEP Finder Bot"
 authors = ["nyuszika7h <nyuszika7h@gmail.com>"]
