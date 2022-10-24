@@ -1,19 +1,21 @@
-[tool.poetry]
+[project]
 name = "sepfinderbot"
 version = "0.1.0"
 description = "SEP Finder Bot"
-authors = ["nyuszika7h <nyuszika7h@gmail.com>"]
-license = "MIT"
+authors = [
+  { name = "nyuszika7h", email = "nyuszika7h@gmail.com" },
+]
+license = { text = "MIT" }
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.7"
-packaging = "^21.3"
-python-telegram-bot = "^13.7"
-remotezip = "^0.9.4"
-requests = "^2.26.0"
-toml = "^0.10.2"
+requires-python = "~= 3.7"
+dependencies = [
+  "packaging ~= 21.3",
+  "python-telegram-bot ~= 13.7",
+  "remotezip ~= 0.9.4",
+  "requests ~= 2.26.0",
+  "toml ~= 0.10.2",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["pdm-pep517"]
+build-backend = "pdm.pep517.api"
