@@ -12,6 +12,7 @@ from io import BytesIO
 from pathlib import Path
 
 import requests
+import telegram
 import toml
 from packaging import version
 from remotezip import RemoteZip
@@ -267,7 +268,14 @@ def on_callback_query(update, ctx):
             if baseband:
                 files.append(InputMediaDocument(baseband, filename=Path(ctx.user_data['bb_path']).name))
 
-        update.message.reply_media_group(files)
+        try:
+            update.message.reply_media_group(files)
+        except telegram.error.NetworkError as e:
+            if str(e).startswith('File too large'):
+                update.message.reply_text('Sorry, the files are too big for Telegram.')
+            else:
+                raise
+
         ctx.bot.answer_callback_query(update.callback_query.id)
 
 
