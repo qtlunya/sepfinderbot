@@ -210,6 +210,7 @@ def on_text(update, ctx):
             update.message.reply_text(
                 'Removing keyboard... (ignore this message)',
                 reply_markup=ReplyKeyboardRemove(),
+                disable_notification=True,
             ).delete()
         except Exception:
             pass
