@@ -15,7 +15,7 @@ import requests
 import toml
 from packaging import version
 from remotezip import RemoteZip
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaDocument, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater
 
 
@@ -257,23 +257,17 @@ def on_callback_query(update, ctx):
         zf = BytesIO()
         zf.name = f'sepbb_{ctx.user_data["boardconfig"]}_{ctx.user_data["firmware"]["buildid"]}.zip'
 
-        with zipfile.ZipFile(zf, 'w') as zfd:
-            buildmanifest = ctx.user_data['buildmanifest']
-            zfd.writestr('BuildManifest.plist', buildmanifest)
+        files = [InputMediaDocument(ctx.user_data['buildmanifest'], filename='BuildManifest.plist')]
+        if ctx.user_data['sep_path']:
+            sep = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['sep_path'], 'SEP')
+            if sep:
+                files.append(InputMediaDocument(sep, filename=Path(ctx.user_data['sep_path']).name))
+        if ctx.user_data['bb_path']:
+            baseband = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['bb_path'], 'baseband')
+            if baseband:
+                files.append(InputMediaDocument(baseband, filename=Path(ctx.user_data['bb_path']).name))
 
-            if ctx.user_data['sep_path']:
-                sep = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['sep_path'], 'SEP')
-                if sep:
-                    zfd.writestr(ctx.user_data['sep_path'], sep)
-
-            if ctx.user_data['bb_path']:
-                baseband = pzb(update, ctx, ctx.user_data['firmware'], ctx.user_data['bb_path'], 'baseband')
-                if baseband:
-                    zfd.writestr(ctx.user_data['bb_path'], baseband)
-
-        zf.seek(0)
-        update.message.reply_document(zf.read(), zf.name)
-
+        update.message.reply_media_group(files)
         ctx.bot.answer_callback_query(update.callback_query.id)
 
 
