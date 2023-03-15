@@ -345,6 +345,8 @@ if __name__ == '__main__':
         level=logging.DEBUG if args.debug else logging.INFO,
     )
 
+    log = logging.getLogger('sepfinderbot')
+
     config = toml.load('config.toml')
 
     updater = Updater(config['token'], base_url=config.get('base_url'))
